@@ -248,6 +248,43 @@ tbody tr:hover { background: #f9fafb; }
 }
 
 .loading { opacity: 0.5; pointer-events: none; }
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-bar label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.filter-bar select {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  background: var(--card-bg);
+  cursor: pointer;
+  color: var(--text);
+}
+
+.filter-bar select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.filter-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-left: auto;
+}
 </style>
 </head>
 <body>
@@ -325,6 +362,25 @@ tbody tr:hover { background: #f9fafb; }
       <h2>Watchlist — Keyword Alerts</h2>
       <span class="badge" id="watchlistCount">0 keywords</span>
     </div>
+    <div class="filter-bar">
+      <label>Status</label>
+      <select id="filterWlStatus" onchange="renderWatchlist()">
+        <option value="">All</option>
+        <option value="GREEN">Green</option>
+        <option value="YELLOW">Yellow</option>
+        <option value="RED">Red</option>
+      </select>
+      <label>Source</label>
+      <select id="filterWlSource" onchange="renderWatchlist()">
+        <option value="">All</option>
+        <option value="content_planner_matched">Content Planner (matched)</option>
+        <option value="content_planner_unmatched">Content Planner (unmatched)</option>
+        <option value="gsc_top20">GSC Top 20</option>
+        <option value="ahrefs">Ahrefs</option>
+        <option value="legacy">Legacy</option>
+      </select>
+      <span class="filter-count" id="wlFilterCount"></span>
+    </div>
     <div class="table-wrap">
       <table><thead><tr>
         <th>Keyword</th><th>Status</th><th>Current</th><th>Target</th><th>Threshold</th><th>Notes</th>
@@ -336,6 +392,22 @@ tbody tr:hover { background: #f9fafb; }
     <div class="card-header">
       <h2>Backlinks Overview</h2>
       <span class="badge" id="backlinksCount">0 links</span>
+    </div>
+    <div class="filter-bar">
+      <label>Domain Rating</label>
+      <select id="filterBlDR" onchange="renderBacklinks()">
+        <option value="">All</option>
+        <option value="0-30">0 – 30</option>
+        <option value="31-60">31 – 60</option>
+        <option value="61+">61+</option>
+      </select>
+      <label>Link Type</label>
+      <select id="filterBlType" onchange="renderBacklinks()">
+        <option value="">All</option>
+        <option value="dofollow">Dofollow</option>
+        <option value="nofollow">Nofollow</option>
+      </select>
+      <span class="filter-count" id="blFilterCount"></span>
     </div>
     <div class="table-wrap">
       <table><thead><tr>
@@ -618,10 +690,28 @@ function renderPositionChart() {
 
 function renderWatchlist() {
   const tbody = document.getElementById('watchlistBody');
-  document.getElementById('watchlistCount').textContent = `${watchlistData.length} keywords`;
+  const statusFilter = document.getElementById('filterWlStatus').value;
+  const sourceFilter = document.getElementById('filterWlSource').value;
+
+  const filtered = watchlistData.filter(r => {
+    if (statusFilter && (r.Status || '').toUpperCase() !== statusFilter) return false;
+    if (sourceFilter) {
+      const src = r.Source || '';
+      if (sourceFilter === 'legacy' && src !== '') return false;
+      if (sourceFilter !== 'legacy' && src !== sourceFilter) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('watchlistCount').textContent = `${filtered.length} / ${watchlistData.length} keywords`;
+  document.getElementById('wlFilterCount').textContent = statusFilter || sourceFilter ? `Showing ${filtered.length} of ${watchlistData.length}` : '';
 
   if (watchlistData.length === 0) {
     tbody.innerHTML = '<tr><td class="empty-state" colspan="6">No watchlist data. Paste keywords to Google Sheets "Watchlist" sheet.</td></tr>';
+    return;
+  }
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td class="empty-state" colspan="6">No keywords match the current filter</td></tr>';
     return;
   }
 
@@ -630,7 +720,7 @@ function renderWatchlist() {
     'ON TRACK': 'green', 'WARNING': 'yellow', 'CRITICAL': 'red'
   };
 
-  tbody.innerHTML = watchlistData.map(r => {
+  tbody.innerHTML = filtered.map(r => {
     const kw = r.Keyword || '';
     const status = (r.Status || '').toUpperCase();
     const current = r.Current_Position || '--';
@@ -651,14 +741,36 @@ function renderWatchlist() {
 
 function renderBacklinks() {
   const tbody = document.getElementById('backlinksBody');
-  document.getElementById('backlinksCount').textContent = `${backlinksData.length} links`;
+  const drFilter = document.getElementById('filterBlDR').value;
+  const typeFilter = document.getElementById('filterBlType').value;
+
+  const filtered = backlinksData.filter(r => {
+    if (drFilter) {
+      const dr = parseFloat(r.Domain_Rating || r.DR || 0);
+      if (drFilter === '0-30' && (dr < 0 || dr > 30)) return false;
+      if (drFilter === '31-60' && (dr < 31 || dr > 60)) return false;
+      if (drFilter === '61+' && dr < 61) return false;
+    }
+    if (typeFilter) {
+      const lt = (r.Link_Type || '').toLowerCase();
+      if (lt !== typeFilter) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('backlinksCount').textContent = `${filtered.length} / ${backlinksData.length} links`;
+  document.getElementById('blFilterCount').textContent = drFilter || typeFilter ? `Showing ${filtered.length} of ${backlinksData.length}` : '';
 
   if (backlinksData.length === 0) {
     tbody.innerHTML = '<tr><td class="empty-state" colspan="5">No backlink data. Paste Ahrefs CSV export to Google Sheets "Backlinks" sheet.</td></tr>';
     return;
   }
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td class="empty-state" colspan="5">No backlinks match the current filter</td></tr>';
+    return;
+  }
 
-  tbody.innerHTML = backlinksData.map(r => {
+  tbody.innerHTML = filtered.map(r => {
     const url = r.URL || '';
     const dr = r.Domain_Rating || r.DR || '--';
     const domains = r.Referring_Domains || r.Domains || '--';
