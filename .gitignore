@@ -1,0 +1,7 @@
+credentials.json
+token.pickle
+create_sheets.py
+update_sheets.py
+merge_watchlist.py
+.env
+.venv/
