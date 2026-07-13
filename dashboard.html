@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Performance Monitor — SEO Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #f8f9fb;
+  --card-bg: #fff;
+  --text: #1a1d23;
+  --text-secondary: #6b7280;
+  --accent: #1B365D;
+  --green: #059669;
+  --yellow: #d97706;
+  --red: #dc2626;
+  --border: #e5e7eb;
+  --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.header-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-controls select,
+.header-controls button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--card-bg);
+  cursor: pointer;
+}
+
+.header-controls button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  font-weight: 500;
+}
+
+.header-controls button:hover { opacity: 0.9; }
+
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.status-dot.live { background: var(--green); }
+.status-dot.error { background: var(--red); }
+
+.scorecards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.card-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.card-delta {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.card-delta.up { color: var(--green); }
+.card-delta.down { color: var(--red); }
+.card-delta.neutral { color: var(--text-secondary); }
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .scorecards { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+}
+
+.tables-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .tables-grid { grid-template-columns: 1fr; }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.card-header h2 {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.card-header .badge {
+  font-size: 11px;
+  background: #f3f4f6;
+  padding: 3px 10px;
+  border-radius: 12px;
+  color: var(--text-secondary);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+tbody tr:hover { background: #f9fafb; }
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-badge.green  { background: #dcfce7; color: #166534; }
+.status-badge.yellow { background: #fef3c7; color: #92400e; }
+.status-badge.red    { background: #fee2e2; color: #991b1b; }
+
+.chart-container {
+  position: relative;
+  height: 320px;
+}
+
+.chart-container canvas { width: 100% !important; }
+
+.footer {
+  text-align: center;
+  margin-top: 32px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.config-panel {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  display: none;
+}
+
+.config-panel.show { display: block; }
+
+.config-panel input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  margin-top: 4px;
+  font-family: monospace;
+}
+
+.config-panel label {
+  font-weight: 600;
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.loading { opacity: 0.5; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Performance Monitor</h1>
+    <span style="font-size:13px;color:var(--text-secondary);margin-top:4px;display:block">
+      <span class="status-dot live"></span> Live — <span id="lastRefresh">just now</span>
+    </span>
+  </div>
+  <div class="header-controls">
+    <select id="periodSelect" onchange="refreshAll()">
+      <option value="6">Last 6 months</option>
+      <option value="12" selected>Last 12 months</option>
+      <option value="24">Last 24 months</option>
+    </select>
+    <button onclick="refreshAll()">Refresh</button>
+    <button onclick="toggleConfig()" style="background:#6b7280;">⚙ Config</button>
+  </div>
+</div>
+
+<div id="configPanel" class="config-panel">
+  <strong>Google Sheets Published CSV URLs</strong>
+  <p style="margin:4px 0; color:#92400e">
+    1. Open your Google Sheet → File → Share → Publish to web<br>
+    2. Choose "Comma-separated values (.csv)" → Publish → Copy the link<br>
+    3. Paste each link below
+  </p>
+  <label>Monthly Summary:</label>
+  <input id="cfgMonthly" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" onchange="saveConfig()">
+  <label>Backlinks:</label>
+  <input id="cfgBacklinks" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" onchange="saveConfig()">
+  <label>Watchlist:</label>
+  <input id="cfgWatchlist" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" onchange="saveConfig()">
+  <button onclick="refreshAll()" style="margin-top:8px;padding:6px 16px;">Apply & Refresh</button>
+</div>
+
+<div class="scorecards" id="scorecards">
+  <div class="card"><div class="card-label">Sessions</div><div class="card-value" id="valSessions">--</div><div class="card-delta neutral" id="deltaSessions">--</div></div>
+  <div class="card"><div class="card-label">Clicks (GSC)</div><div class="card-value" id="valClicks">--</div><div class="card-delta neutral" id="deltaClicks">--</div></div>
+  <div class="card"><div class="card-label">Avg CTR</div><div class="card-value" id="valCTR">--</div><div class="card-delta neutral" id="deltaCTR">--</div></div>
+  <div class="card"><div class="card-label">Avg Position</div><div class="card-value" id="valPosition">--</div><div class="card-delta neutral" id="deltaPosition">--</div></div>
+  <div class="card"><div class="card-label">Keywords Tracked</div><div class="card-value" id="valKeywords">--</div><div class="card-delta neutral" id="deltaKeywords">--</div></div>
+</div>
+
+<div class="charts-grid">
+  <div class="card">
+    <div class="card-header">
+      <h2>Traffic & Clicks Trend</h2>
+      <span class="badge" id="chartLabel">12 months</span>
+    </div>
+    <div class="chart-container"><canvas id="trafficChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>Position Distribution</h2>
+      <span class="badge">Current</span>
+    </div>
+    <div class="chart-container"><canvas id="positionChart"></canvas></div>
+  </div>
+</div>
+
+<div class="tables-grid">
+  <div class="card">
+    <div class="card-header">
+      <h2>Watchlist — Keyword Alerts</h2>
+      <span class="badge" id="watchlistCount">0 keywords</span>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>Keyword</th><th>Status</th><th>Current</th><th>Target</th><th>Threshold</th><th>Notes</th>
+      </tr></thead>
+      <tbody id="watchlistBody"><tr><td class="empty-state" colspan="6">No watchlist data loaded</td></tr></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <h2>Backlinks Overview</h2>
+      <span class="badge" id="backlinksCount">0 links</span>
+    </div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>URL</th><th>DR</th><th>Domains</th><th>Backlinks</th><th>Traffic</th>
+      </tr></thead>
+      <tbody id="backlinksBody"><tr><td class="empty-state" colspan="5">No backlink data loaded</td></tr></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  Performance Monitor Dashboard · Auto-refreshes from Google Sheets · <span id="currentTime"></span>
+</div>
+
+<script>
+// ---------- CONFIG ----------
+const DEFAULT_CONFIG = {
+  monthly: '',
+  backlinks: '',
+  watchlist: ''
+};
+
+let config = loadConfig();
+let monthlyData = [];
+let backlinksData = [];
+let watchlistData = [];
+let trafficChart = null;
+let positionChart = null;
+
+function loadConfig() {
+  try {
+    const saved = localStorage.getItem('seo_dashboard_config');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      document.getElementById('cfgMonthly').value = parsed.monthly || '';
+      document.getElementById('cfgBacklinks').value = parsed.backlinks || '';
+      document.getElementById('cfgWatchlist').value = parsed.watchlist || '';
+      return parsed;
+    }
+  } catch(e) {}
+  return {...DEFAULT_CONFIG};
+}
+
+function saveConfig() {
+  config = {
+    monthly: document.getElementById('cfgMonthly').value.trim(),
+    backlinks: document.getElementById('cfgBacklinks').value.trim(),
+    watchlist: document.getElementById('cfgWatchlist').value.trim()
+  };
+  localStorage.setItem('seo_dashboard_config', JSON.stringify(config));
+}
+
+function toggleConfig() {
+  document.getElementById('configPanel').classList.toggle('show');
+}
+
+// ---------- CSV PARSER ----------
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    if (values.length < headers.length) continue;
+    const row = {};
+    headers.forEach((h, idx) => {
+      row[h] = (values[idx] || '').replace(/^"|"$/g, '').trim();
+    });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (const ch of line) {
+    if (ch === '"') { inQuotes = !inQuotes; continue; }
+    if (ch === ',' && !inQuotes) { result.push(current); current = ''; continue; }
+    current += ch;
+  }
+  result.push(current);
+  return result;
+}
+
+// ---------- DATA FETCH ----------
+async function fetchSheet(url) {
+  if (!url) return [];
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const text = await resp.text();
+    return parseCSV(text);
+  } catch (e) {
+    console.warn('Fetch failed:', url, e.message);
+    return [];
+  }
+}
+
+async function loadAllData() {
+  config = loadConfig();
+
+  const [monthly, backlinks, watchlist] = await Promise.all([
+    fetchSheet(config.monthly),
+    fetchSheet(config.backlinks),
+    fetchSheet(config.watchlist)
+  ]);
+
+  monthlyData = monthly;
+  backlinksData = backlinks;
+  watchlistData = watchlist;
+
+  document.getElementById('lastRefresh').textContent = new Date().toLocaleString();
+  document.getElementById('currentTime').textContent = new Date().toLocaleString();
+}
+
+// ---------- RENDER ----------
+function renderScorecards() {
+  if (monthlyData.length === 0) return;
+  const months = parseInt(document.getElementById('periodSelect').value);
+  const filtered = monthlyData.slice(-months);
+
+  const latest = filtered[filtered.length - 1];
+  const prev = filtered.length >= 2 ? filtered[filtered.length - 2] : null;
+
+  const sessions = parseInt(latest.Total_Sessions || latest.Sessions || 0);
+  const clicks = parseInt(latest.Total_Clicks || latest.Clicks || 0);
+  const ctr = parseFloat(latest.Avg_CTR || latest.CTR || 0);
+  const position = parseFloat(latest.Avg_Position || latest.Average_Position || 0);
+
+  document.getElementById('valSessions').textContent = sessions.toLocaleString();
+  document.getElementById('valClicks').textContent = clicks.toLocaleString();
+  document.getElementById('valCTR').textContent = ctr.toFixed(1) + '%';
+  document.getElementById('valPosition').textContent = position.toFixed(1);
+
+  if (prev) {
+    const prevSessions = parseInt(prev.Total_Sessions || prev.Sessions || 0);
+    const prevClicks = parseInt(prev.Total_Clicks || prev.Clicks || 0);
+    const prevCTR = parseFloat(prev.Avg_CTR || prev.CTR || 0);
+    const prevPosition = parseFloat(prev.Avg_Position || prev.Average_Position || 0);
+
+    renderDelta('deltaSessions', sessions, prevSessions);
+    renderDelta('deltaClicks', clicks, prevClicks);
+    renderDelta('deltaCTR', ctr, prevCTR);
+    renderDelta('deltaPosition', position, prevPosition, true);
+  }
+
+  const kwCount = watchlistData.length;
+  document.getElementById('valKeywords').textContent = kwCount;
+}
+
+function renderDelta(id, current, prev, inverse) {
+  const el = document.getElementById(id);
+  if (!prev || prev === 0) { el.textContent = '--'; el.className = 'card-delta neutral'; return; }
+  const pct = ((current - prev) / prev * 100);
+  const sign = pct >= 0 ? '+' : '';
+  el.textContent = `${sign}${pct.toFixed(1)}% vs prev`;
+
+  if (inverse) {
+    el.className = pct > 0 ? 'card-delta down' : (pct < 0 ? 'card-delta up' : 'card-delta neutral');
+  } else {
+    el.className = pct > 0 ? 'card-delta up' : (pct < 0 ? 'card-delta down' : 'card-delta neutral');
+  }
+}
+
+function renderTrafficChart() {
+  const ctx = document.getElementById('trafficChart').getContext('2d');
+  if (trafficChart) trafficChart.destroy();
+
+  const months = parseInt(document.getElementById('periodSelect').value);
+  const filtered = monthlyData.slice(-months);
+
+  const labels = filtered.map(r => r.Month || '');
+  const sessionsData = filtered.map(r => parseInt(r.Total_Sessions || r.Sessions || 0));
+  const clicksData = filtered.map(r => parseInt(r.Total_Clicks || r.Clicks || 0));
+
+  document.getElementById('chartLabel').textContent = `${months} months`;
+
+  trafficChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Sessions',
+          data: sessionsData,
+          borderColor: '#1B365D',
+          backgroundColor: 'rgba(27,54,93,0.05)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 6
+        },
+        {
+          label: 'Clicks (GSC)',
+          data: clicksData,
+          borderColor: '#059669',
+          backgroundColor: 'rgba(5,150,105,0.05)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointHoverRadius: 6
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 20 } }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 12 } },
+        y: { beginAtZero: false, grid: { color: '#f3f4f6' } }
+      }
+    }
+  });
+}
+
+function renderPositionChart() {
+  const ctx = document.getElementById('positionChart').getContext('2d');
+  if (positionChart) positionChart.destroy();
+
+  if (watchlistData.length === 0) return;
+
+  const buckets = { '1–3': 0, '4–10': 0, '11–20': 0, '21+': 0 };
+  watchlistData.forEach(r => {
+    const pos = parseInt(r.Current_Position || r.Position || 999);
+    if (pos <= 3) buckets['1–3']++;
+    else if (pos <= 10) buckets['4–10']++;
+    else if (pos <= 20) buckets['11–20']++;
+    else buckets['21+']++;
+  });
+
+  const colors = ['#059669', '#1B365D', '#d97706', '#dc2626'];
+
+  positionChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: Object.keys(buckets),
+      datasets: [{
+        data: Object.values(buckets),
+        backgroundColor: colors,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 8, padding: 16 } }
+      }
+    }
+  });
+}
+
+function renderWatchlist() {
+  const tbody = document.getElementById('watchlistBody');
+  document.getElementById('watchlistCount').textContent = `${watchlistData.length} keywords`;
+
+  if (watchlistData.length === 0) {
+    tbody.innerHTML = '<tr><td class="empty-state" colspan="6">No watchlist data. Paste keywords to Google Sheets "Watchlist" sheet.</td></tr>';
+    return;
+  }
+
+  const statusMap = {
+    'GREEN': 'green', 'YELLOW': 'yellow', 'RED': 'red',
+    'ON TRACK': 'green', 'WARNING': 'yellow', 'CRITICAL': 'red'
+  };
+
+  tbody.innerHTML = watchlistData.map(r => {
+    const kw = r.Keyword || '';
+    const status = (r.Status || '').toUpperCase();
+    const current = r.Current_Position || '--';
+    const target = r.Target_Position || '--';
+    const threshold = r.Alert_Threshold || '--';
+    const notes = r.Notes || '';
+    const cls = statusMap[status] || 'yellow';
+    return `<tr>
+      <td><strong>${kw}</strong></td>
+      <td><span class="status-badge ${cls}">${status}</span></td>
+      <td>${current}</td>
+      <td>${target}</td>
+      <td>${threshold}</td>
+      <td style="max-width:200px;white-space:normal;font-size:12px;color:var(--text-secondary)">${notes}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderBacklinks() {
+  const tbody = document.getElementById('backlinksBody');
+  document.getElementById('backlinksCount').textContent = `${backlinksData.length} links`;
+
+  if (backlinksData.length === 0) {
+    tbody.innerHTML = '<tr><td class="empty-state" colspan="5">No backlink data. Paste Ahrefs CSV export to Google Sheets "Backlinks" sheet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = backlinksData.map(r => {
+    const url = r.URL || '';
+    const dr = r.Domain_Rating || r.DR || '--';
+    const domains = r.Referring_Domains || r.Domains || '--';
+    const bl = r.Backlinks || '--';
+    const traffic = r.Organic_Traffic || r.Traffic || '--';
+    return `<tr>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${url}</td>
+      <td>${dr}</td>
+      <td>${domains}</td>
+      <td>${bl}</td>
+      <td>${traffic}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ---------- MAIN ----------
+async function refreshAll() {
+  await loadAllData();
+  renderScorecards();
+  renderTrafficChart();
+  renderPositionChart();
+  renderWatchlist();
+  renderBacklinks();
+}
+
+// Auto-refresh every 30 minutes
+setInterval(refreshAll, 30 * 60 * 1000);
+
+// Initial load
+refreshAll();
+</script>
+</body>
+</html>

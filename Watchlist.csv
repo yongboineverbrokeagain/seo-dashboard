@@ -1,0 +1,5 @@
+Keyword,Target_Position,Current_Position,Alert_Threshold,Status,Tags,Notes,Last_Checked
+"seo audit tool",1,3,5,YELLOW,primary,Wait 1-2 weeks to confirm fluctuation,2026-07-13
+"backlink analyzer",3,11,7,RED,important,Investigating - possible competitor content update,2026-07-13
+"keyword research tool",5,4,8,GREEN,tracked,,2026-07-13
+"content optimizer",1,6,5,RED,primary,Dropped 5 positions - need full diagnostic,2026-07-13

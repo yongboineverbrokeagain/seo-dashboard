@@ -1,0 +1,4 @@
+Export_Date,URL,Domain_Rating,Referring_Domains,Backlinks,Organic_Traffic,Traffic_Value,Anchor_Text,Link_Type,First_Seen,Last_Seen
+2026-07-01,https://example.com/page-1,65,120,450,12500,8500,"brand name",dofollow,2025-01-15,2026-06-30
+2026-07-01,https://example.com/page-2,78,340,1200,45000,32000,"keyword phrase",dofollow,2024-06-01,2026-06-28
+2026-07-01,https://example.com/page-3,42,55,180,3200,2100,"click here",nofollow,2025-09-10,2026-06-25
