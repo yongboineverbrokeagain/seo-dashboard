@@ -271,14 +271,22 @@ tbody tr:hover { background: #f9fafb; }
 </div>
 
 <div id="configPanel" class="config-panel">
-  <strong>Google Sheets Published CSV URLs</strong>
-  <p style="margin:4px 0; color:#92400e">
-    1. Open your Google Sheet → File → Share → Publish to web<br>
-    2. Choose "Comma-separated values (.csv)" → Publish → Copy the link<br>
-    3. Paste each link below
-  </p>
+  <strong>Data Sources Configuration</strong>
+
+  <div style="background:#fff;border:2px solid var(--accent);border-radius:8px;padding:14px 16px;margin-top:10px;">
+    <p style="margin:0 0 8px 0;font-weight:600;color:var(--accent);font-size:13px;">🚀 Quick Setup — Paste 1 URL</p>
+    <p style="margin:0 0 6px 0;font-size:11px;color:#6b7280;">
+      File → Share → Publish to web → <b>Entire Document</b> → Publish → Copy the link
+    </p>
+    <input id="cfgUnified" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/2PACX-.../pub" style="margin-bottom:6px;">
+    <button onclick="autoFillSheets()" style="background:var(--accent);color:#fff;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:12px;">Auto-fill 3 sheets</button>
+    <span id="autoFillMsg" style="font-size:11px;color:var(--green);margin-left:8px;display:none;">Done!</span>
+  </div>
+
+  <div style="text-align:center;color:#9ca3af;margin:12px 0;font-size:12px;">— or manual setup —</div>
+
   <label>Monthly Summary:</label>
-  <input id="cfgMonthly" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" onchange="saveConfig()">
+  <input id="cfgMonthly" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?gid=0&single=true&output=csv" onchange="saveConfig()">
   <label>Backlinks:</label>
   <input id="cfgBacklinks" type="text" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" onchange="saveConfig()">
   <label>Watchlist:</label>
@@ -382,6 +390,27 @@ function saveConfig() {
 
 function toggleConfig() {
   document.getElementById('configPanel').classList.toggle('show');
+}
+
+function autoFillSheets() {
+  const unifiedUrl = document.getElementById('cfgUnified').value.trim();
+  if (!unifiedUrl) { alert('Paste the published URL first'); return; }
+
+  const match = unifiedUrl.match(/2PACX-[a-zA-Z0-9_-]+/);
+  if (!match) { alert('Could not find a valid published document ID (2PACX-...) in the URL.\n\nExpected format: https://docs.google.com/spreadsheets/d/e/2PACX-XXXX/pub'); return; }
+
+  const pubId = match[0];
+  const base = `https://docs.google.com/spreadsheets/d/e/${pubId}/pub`;
+
+  document.getElementById('cfgMonthly').value = `${base}?gid=0&single=true&output=csv`;
+  document.getElementById('cfgBacklinks').value = `${base}?gid=1312391371&single=true&output=csv`;
+  document.getElementById('cfgWatchlist').value = `${base}?gid=1518087724&single=true&output=csv`;
+
+  saveConfig();
+
+  const msg = document.getElementById('autoFillMsg');
+  msg.style.display = 'inline';
+  setTimeout(() => { msg.style.display = 'none'; }, 2000);
 }
 
 // ---------- CSV PARSER ----------
